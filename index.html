@@ -164,6 +164,35 @@
     .message { text-align: center; color: var(--muted); padding: 1rem; }
     .error { color: var(--loss); }
 
+    .gmsc {
+      color: var(--win);
+      font-weight: 700;
+      font-size: 1rem;
+      margin-left: 0.75rem;
+    }
+
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      background: var(--card);
+      border: 1px solid var(--win);
+      border-radius: 14px;
+      padding: 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+    .summary .label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    .summary .sub { color: var(--muted); font-size: 0.9rem; margin-top: 0.2rem; }
+    .summary .total { color: var(--win); font-size: 2.25rem; font-weight: 800; }
+
     @media (max-width: 520px) {
       header h1 { font-size: 1.6rem; }
       button { width: 100%; }
@@ -360,6 +389,10 @@
         if (!rows.length) throw new Error("That file has no data rows.");
         const row = rows[Math.floor(Math.random() * rows.length)];
 
+        // Pull GmSc out as a number (null if missing or not a number)
+        const parsed = parseFloat(String(row["GmSc"] ?? "").replace(/[^0-9.\-]/g, ""));
+        const gmsc = isNaN(parsed) ? null : parsed;
+
         const head = COLUMNS
           .map(c => `<th class="${KEY_COLUMNS.includes(c) ? "key" : ""}">${c}</th>`)
           .join("");
@@ -367,14 +400,16 @@
           .map(c => `<td class="${cellClass(c, row[c])}">${row[c] ?? ""}</td>`)
           .join("");
 
-        return `
+        const html = `
           <div class="card">
             <h2><span class="pos">${position}:</span> ${name}
-              <small>${row["Date"] ?? ""} ${row["Opp"] ? "vs " + row["Opp"] : ""}</small></h2>
+              <small>${row["Date"] ?? ""} ${row["Opp"] ? "vs " + row["Opp"] : ""}</small>
+              ${gmsc !== null ? `<span class="gmsc">GmSc ${row["GmSc"]}</span>` : ""}</h2>
             <div class="wrap"><table><tr>${head}</tr><tr>${cells}</tr></table></div>
           </div>`;
+        return { html, gmsc };
       } catch (err) {
-        return errorCard(position, err.message);
+        return { html: errorCard(position, err.message), gmsc: null };
       }
     }
 
@@ -389,8 +424,21 @@
       }
 
       result.innerHTML = `<div class="message">Loading...</div>`;
-      const cards = await Promise.all(chosen.map(([pos, name]) => buildCard(pos, name)));
-      result.innerHTML = cards.join("");
+      const built = await Promise.all(chosen.map(([pos, name]) => buildCard(pos, name)));
+
+      const scores = built.map(b => b.gmsc).filter(g => g !== null);
+      const total = scores.reduce((sum, g) => sum + g, 0);
+
+      const summary = scores.length ? `
+        <div class="summary">
+          <div>
+            <div class="label">Total Game Score</div>
+            <div class="sub">Sum of GmSc across ${scores.length} player${scores.length === 1 ? "" : "s"}</div>
+          </div>
+          <div class="total">${total.toFixed(1)}</div>
+        </div>` : "";
+
+      result.innerHTML = built.map(b => b.html).join("") + summary;
     });
   </script>
 </body>
