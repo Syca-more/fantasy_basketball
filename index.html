@@ -37,10 +37,6 @@
     header p { margin: 0.4rem 0 0; color: var(--muted); }
 
     .controls {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: center;
-      flex-wrap: wrap;
       background: var(--card);
       border: 1px solid var(--card-border);
       border-radius: 14px;
@@ -48,7 +44,23 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     }
 
-    select, button {
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+    }
+
+    input, button {
       font-size: 1rem;
       font-family: inherit;
       padding: 0.7rem 1rem;
@@ -56,16 +68,18 @@
       border: 1px solid var(--card-border);
     }
 
-    select {
+    input {
+      width: 100%;
       background: var(--bg);
       color: var(--text);
-      min-width: 220px;
-      cursor: pointer;
     }
-    select:focus, button:focus-visible {
+    input::placeholder { color: var(--muted); }
+    input:focus, button:focus-visible {
       outline: 2px solid var(--accent);
       outline-offset: 2px;
     }
+
+    .actions { margin-top: 1.25rem; text-align: center; }
 
     button {
       background: var(--accent);
@@ -73,12 +87,13 @@
       font-weight: 700;
       border-color: var(--accent);
       cursor: pointer;
+      padding: 0.7rem 2.5rem;
       transition: background 0.15s, transform 0.1s;
     }
     button:hover { background: var(--accent-hover); }
     button:active { transform: scale(0.97); }
 
-    #result { margin-top: 1.5rem; }
+    #result { margin-top: 1.5rem; display: grid; gap: 1rem; }
 
     .card {
       background: var(--card);
@@ -87,7 +102,8 @@
       padding: 1.25rem;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     }
-    .card h2 { margin: 0 0 1rem; font-size: 1.4rem; }
+    .card h2 { margin: 0 0 1rem; font-size: 1.3rem; }
+    .card h2 .pos { color: var(--accent); }
     .card h2 small { color: var(--muted); font-weight: 400; font-size: 0.9rem; margin-left: 0.5rem; }
 
     .wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--card-border); }
@@ -113,7 +129,7 @@
 
     @media (max-width: 520px) {
       header h1 { font-size: 1.6rem; }
-      select, button { width: 100%; }
+      button { width: 100%; }
     }
   </style>
 </head>
@@ -121,20 +137,27 @@
   <div class="container">
     <header>
       <h1>🏀 Random <span>Game</span> Picker</h1>
-      <p>Choose a player and pull a random game from their log.</p>
+      <p>Choose players by position and pull a random game from each log.</p>
     </header>
 
     <div class="controls">
-      <select id="nameSelect"></select>
-      <button id="submitBtn">Submit</button>
+      <div class="fields" id="fields"></div>
+      <div class="actions"><button id="submitBtn">Submit</button></div>
     </div>
 
     <div id="result"></div>
   </div>
 
   <script>
-    // ADD NEW PLAYERS HERE. Each needs a matching file, e.g. "Ty Lawson" -> ty_lawson.xls
-    const PLAYERS = ["Ty Lawson", "Another Player"];
+    // WHICH PLAYERS APPEAR IN WHICH DROPDOWN. Edit these lists to add players.
+    // Each player needs a matching file, e.g. "Ty Lawson" -> ty_lawson.xls
+    const POSITIONS = {
+      "Point Guard":    ["Ty Lawson"],
+      "Shooting Guard": [],
+      "Small Forward":  [],
+      "Power Forward":  [],
+      "Center":         []
+    };
 
     const FILE_EXT = ".xls";
     const FILE_FOLDER = "";   // use "data/" if you put the files in a data folder
@@ -144,11 +167,35 @@
       "BLK", "TOV", "PF", "PTS", "GmSc", "+/-"];
     const KEY_COLUMNS = ["TRB", "AST", "PTS"];   // highlighted in orange
 
-    const select = document.getElementById("nameSelect");
+    const fieldsEl = document.getElementById("fields");
     const result = document.getElementById("result");
     const cache = {};   // so each file is only downloaded once
+    const inputs = {};  // position -> its input element
 
-    PLAYERS.forEach(n => select.add(new Option(n, n)));
+    // Build one searchable dropdown per position
+    Object.entries(POSITIONS).forEach(([position, players], i) => {
+      const listId = "list-" + i;
+      const field = document.createElement("div");
+      field.className = "field";
+
+      const label = document.createElement("label");
+      label.htmlFor = "input-" + i;
+      label.textContent = position;
+
+      const input = document.createElement("input");
+      input.id = "input-" + i;
+      input.setAttribute("list", listId);
+      input.placeholder = "Select Player";
+      input.autocomplete = "off";
+
+      const datalist = document.createElement("datalist");
+      datalist.id = listId;
+      players.forEach(p => datalist.appendChild(new Option(p)));
+
+      field.append(label, input, datalist);
+      fieldsEl.appendChild(field);
+      inputs[position] = input;
+    });
 
     function fileFor(name) {
       const slug = name.toLowerCase().trim()
@@ -178,9 +225,16 @@
       return "";
     }
 
-    document.getElementById("submitBtn").addEventListener("click", async () => {
-      const name = select.value;
-      result.innerHTML = `<div class="message">Loading...</div>`;
+    function errorCard(position, text) {
+      return `<div class="card"><h2><span class="pos">${position}</span></h2>
+              <div class="message error">${text}</div></div>`;
+    }
+
+    async function buildCard(position, typed) {
+      // Only accept names that are in this position's list (case-insensitive)
+      const name = POSITIONS[position].find(p => p.toLowerCase() === typed.toLowerCase());
+      if (!name) return errorCard(position, `"${typed}" isn't available at this position. Pick a name from the list.`);
+
       try {
         const rows = await loadRows(name);
         if (!rows.length) throw new Error("That file has no data rows.");
@@ -193,14 +247,30 @@
           .map(c => `<td class="${cellClass(c, row[c])}">${row[c] ?? ""}</td>`)
           .join("");
 
-        result.innerHTML = `
+        return `
           <div class="card">
-            <h2>${name}<small>${row["Date"] ?? ""} ${row["Opp"] ? "vs " + row["Opp"] : ""}</small></h2>
+            <h2><span class="pos">${position}:</span> ${name}
+              <small>${row["Date"] ?? ""} ${row["Opp"] ? "vs " + row["Opp"] : ""}</small></h2>
             <div class="wrap"><table><tr>${head}</tr><tr>${cells}</tr></table></div>
           </div>`;
       } catch (err) {
-        result.innerHTML = `<div class="message error">${err.message}</div>`;
+        return errorCard(position, err.message);
       }
+    }
+
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      const chosen = Object.keys(POSITIONS)
+        .map(pos => [pos, inputs[pos].value.trim()])
+        .filter(([, typed]) => typed !== "");
+
+      if (!chosen.length) {
+        result.innerHTML = `<div class="message">Select at least one player first.</div>`;
+        return;
+      }
+
+      result.innerHTML = `<div class="message">Loading...</div>`;
+      const cards = await Promise.all(chosen.map(([pos, typed]) => buildCard(pos, typed)));
+      result.innerHTML = cards.join("");
     });
   </script>
 </body>
