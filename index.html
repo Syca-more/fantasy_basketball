@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Random Game Picker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: center; }
+    th { background: #f0f0f0; }
+    .wrap { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>Pick a name</h1>
+  <select id="nameSelect"></select>
+  <button id="submitBtn">Submit</button>
+  <div class="wrap"><div id="result"></div></div>
+
+  <script>
+    const NAMES = ["Ty Lawson", "Player 2", "Player 3"];   // your pre-defined list
+    const COLUMNS = ["Date", "Opp", "Result", "MP", "FG", "FGA", "FG%", "3P", "3PA",
+      "3P%", "eFG%", "FT", "FTA", "FT%", "ORB", "DRB", "TRB", "AST", "STL",
+      "BLK", "TOV", "PF", "PTS", "GmSc", "+/-"];
+
+    const select = document.getElementById("nameSelect");
+    NAMES.forEach(n => select.add(new Option(n, n)));
+
+    let rows = [];
+    Papa.parse("data.csv", {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: res => { rows = res.data; }
+    });
+
+    document.getElementById("submitBtn").addEventListener("click", () => {
+      if (!rows.length) return;
+      const row = rows[Math.floor(Math.random() * rows.length)];
+
+      const head = COLUMNS.map(c => `<th>${c}</th>`).join("");
+      const cells = COLUMNS.map(c => `<td>${row[c] ?? ""}</td>`).join("");
+      document.getElementById("result").innerHTML =
+        `<h2>${select.value}</h2><table><tr>${head}</tr><tr>${cells}</tr></table>`;
+    });
+  </script>
+</body>
+</html>
