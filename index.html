@@ -20,40 +20,54 @@
 
     * { box-sizing: border-box; }
 
+    html, body { height: 100%; }
+
     body {
       margin: 0;
-      min-height: 100vh;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 60%);
+      background-attachment: fixed;
       color: var(--text);
-      padding: 2rem 1rem;
     }
 
-    .container { max-width: 1000px; margin: 0 auto; }
+    /* One-screen layout: header, controls, results (fills the middle), footer bar */
+    .app {
+      height: 100vh;
+      height: 100dvh;
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 0.7rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
 
-    header { text-align: center; margin-bottom: 1.5rem; }
-    header h1 { margin: 0; font-size: 2rem; letter-spacing: -0.5px; }
+    header { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+    header h1 { margin: 0; font-size: 1.4rem; letter-spacing: -0.5px; }
     header h1 span { color: var(--accent); }
-    header p { margin: 0.4rem 0 0; color: var(--muted); }
+    header p { margin: 0; color: var(--muted); font-size: 0.85rem; }
 
     .controls {
+      position: relative;
+      z-index: 30;   /* so open dropdown lists sit above the result cards */
       background: var(--card);
       border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 1.25rem;
+      border-radius: 12px;
+      padding: 0.7rem 0.9rem;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     }
 
     .fields {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(5, 1fr) auto;
+      gap: 0.75rem;
+      align-items: end;
     }
 
     .field label {
       display: block;
-      margin-bottom: 0.35rem;
-      font-size: 0.75rem;
+      margin-bottom: 0.25rem;
+      font-size: 0.7rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -61,10 +75,10 @@
     }
 
     input, button {
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-family: inherit;
-      padding: 0.7rem 1rem;
-      border-radius: 10px;
+      padding: 0.5rem 0.75rem;
+      border-radius: 9px;
       border: 1px solid var(--card-border);
     }
 
@@ -81,10 +95,10 @@
 
     /* Custom searchable dropdown */
     .combo { position: relative; }
-    .combo input { padding-right: 2.2rem; cursor: pointer; }
+    .combo input { padding-right: 2rem; cursor: pointer; }
     .combo .arrow {
       position: absolute;
-      right: 0.85rem;
+      right: 0.75rem;
       top: 50%;
       transform: translateY(-50%);
       color: var(--muted);
@@ -108,7 +122,7 @@
     }
     .options[hidden] { display: none; }
     .options li {
-      padding: 0.55rem 0.75rem;
+      padding: 0.5rem 0.75rem;
       border-radius: 7px;
       cursor: pointer;
     }
@@ -116,91 +130,171 @@
     .options li.selected { color: var(--accent); font-weight: 700; }
     .options li.empty { color: var(--muted); cursor: default; font-style: italic; }
 
-    .actions { margin-top: 1.25rem; text-align: center; }
-
     button {
       background: var(--accent);
       color: #fff;
       font-weight: 700;
       border-color: var(--accent);
       cursor: pointer;
-      padding: 0.7rem 2.5rem;
+      padding: 0.5rem 1.6rem;
       transition: background 0.15s, transform 0.1s;
     }
     button:hover { background: var(--accent-hover); }
     button:active { transform: scale(0.97); }
 
-    #result { margin-top: 1.5rem; display: grid; gap: 1rem; }
+    /* Results fill whatever space is left */
+    #result {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
 
     .card {
+      flex: 0 1 auto;
+      min-height: 0;
+      overflow: hidden;
       background: var(--card);
       border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 1.25rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      border-radius: 10px;
+      padding: 0.45rem 0.7rem;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
     }
-    .card h2 { margin: 0 0 1rem; font-size: 1.3rem; }
+    .card h2 { margin: 0 0 0.3rem; font-size: 0.95rem; }
     .card h2 .pos { color: var(--accent); }
-    .card h2 small { color: var(--muted); font-weight: 400; font-size: 0.9rem; margin-left: 0.5rem; }
-
-    .wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--card-border); }
-
-    table { border-collapse: collapse; width: 100%; white-space: nowrap; }
-    th, td { padding: 0.6rem 0.8rem; text-align: center; }
-    th {
-      background: #0b1220;
-      color: var(--muted);
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    td { font-size: 1rem; background: var(--bg); }
-
-    .key { color: var(--accent); font-weight: 700; font-size: 1.15rem; }
-    th.key { font-size: 0.75rem; }
-    .win { color: var(--win); font-weight: 700; }
-    .loss { color: var(--loss); font-weight: 700; }
-
-    .message { text-align: center; color: var(--muted); padding: 1rem; }
-    .error { color: var(--loss); }
+    .card h2 small { color: var(--muted); font-weight: 400; font-size: 0.8rem; margin-left: 0.5rem; }
 
     .gmsc {
       color: var(--win);
       font-weight: 700;
-      font-size: 1rem;
-      margin-left: 0.75rem;
+      font-size: 0.9rem;
+      margin-left: 0.6rem;
     }
 
-    .summary {
+    .wrap { border-radius: 8px; border: 1px solid var(--card-border); overflow: hidden; }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      white-space: nowrap;
+      /* scales with window size so all 25 columns stay visible */
+      font-size: clamp(0.55rem, min(0.85vw, 1.55vh), 0.85rem);
+    }
+    th, td { padding: 0.2rem 0.3rem; text-align: center; }
+    th {
+      background: #0b1220;
+      color: var(--muted);
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    td { background: var(--bg); }
+
+    .key { color: var(--accent); font-weight: 700; }
+    td.key { font-size: 1.1em; }
+    .win { color: var(--win); font-weight: 700; }
+    .loss { color: var(--loss); font-weight: 700; }
+
+    .message { text-align: center; color: var(--muted); padding: 1rem; margin: auto; }
+    .error { color: var(--loss); }
+
+    /* Bottom bar: summary on the left, Release the Beast on the right */
+    .bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: 1rem;
+      min-height: 3rem;
+    }
+    #summary { flex: 1; }
+
+    .summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 1rem;
       background: var(--card);
       border: 1px solid var(--win);
-      border-radius: 14px;
-      padding: 1.25rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      border-radius: 10px;
+      padding: 0.4rem 1rem;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
     }
     .summary .label {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--muted);
     }
-    .summary .sub { color: var(--muted); font-size: 0.9rem; margin-top: 0.2rem; }
-    .summary .total { color: var(--win); font-size: 2.25rem; font-weight: 800; }
+    .summary .sub { color: var(--muted); font-size: 0.75rem; }
+    .summary .total { color: var(--win); font-size: 1.7rem; font-weight: 800; line-height: 1; }
 
-    @media (max-width: 520px) {
-      header h1 { font-size: 1.6rem; }
-      button { width: 100%; }
+    .beast {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      border-color: #ef4444;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.6rem 1.4rem;
+      white-space: nowrap;
+    }
+    .beast:hover {
+      background: linear-gradient(135deg, #f87171, #dc2626);
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.6);
+    }
+
+    /* Timmy popup: covers most of the screen */
+    .timmy {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2vh;
+      padding: 2vh 2vw;
+      background: rgba(15, 23, 42, 0.95);
+      text-align: center;
+      animation: pop 0.3s ease-out;
+    }
+    .timmy[hidden] { display: none; }
+    .timmy img {
+      max-width: 92vw;
+      max-height: 70vh;
+      object-fit: contain;
+      border-radius: 16px;
+      box-shadow: 0 0 60px rgba(249, 115, 22, 0.5);
+    }
+    .timmy-text {
+      font-size: clamp(2rem, 9vw, 7rem);
+      font-weight: 900;
+      color: var(--accent);
+      text-shadow: 0 0 30px rgba(249, 115, 22, 0.6);
+      line-height: 1.1;
+    }
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    /* Wide screens: lock the page to one screen, no scrolling */
+    @media (min-width: 900px) {
+      body { overflow: hidden; }
+    }
+
+    /* Narrow screens (phones): 25 columns can't fit, so fall back to normal scrolling */
+    @media (max-width: 899px) {
+      .app { height: auto; min-height: 100vh; }
+      .fields { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+      .wrap { overflow-x: auto; }
+      table { font-size: 0.8rem; }
+      .bar { flex-direction: column; align-items: stretch; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="app">
     <header>
       <h1>🏀 Random <span>Game</span> Picker</h1>
       <p>Choose players by position and pull a random game from each log.</p>
@@ -208,10 +302,21 @@
 
     <div class="controls">
       <div class="fields" id="fields"></div>
-      <div class="actions"><button id="submitBtn">Submit</button></div>
     </div>
 
-    <div id="result"></div>
+    <div id="result">
+      <div class="message">Select players and press Submit.</div>
+    </div>
+
+    <footer class="bar">
+      <div id="summary"></div>
+      <button id="beastBtn" class="beast">Release the Beast</button>
+    </footer>
+  </div>
+
+  <div id="timmy" class="timmy" hidden>
+    <img src="timmy.png" alt="Timmy" onerror="this.style.display='none'">
+    <div class="timmy-text">Timmy Unlocked!!!</div>
   </div>
 
   <script>
@@ -225,6 +330,10 @@
       "Center":         ["Nikola Jokic", "Dan Issel", "Dikembe Mutombo"]
     };
 
+    // Hidden until "Release the Beast" is pressed
+    const SECRET_PLAYER = "Tim Duncan";
+    const SECRET_POSITION = "Power Forward";
+
     const FILE_EXT = ".xls";
     const FILE_FOLDER = "";   // use "data/" if you put the files in a data folder
 
@@ -235,6 +344,8 @@
 
     const fieldsEl = document.getElementById("fields");
     const result = document.getElementById("result");
+    const summaryEl = document.getElementById("summary");
+    const timmyEl = document.getElementById("timmy");
     const cache = {};    // so each file is only downloaded once
     const combos = {};   // position -> its dropdown
 
@@ -344,11 +455,18 @@
       label.htmlFor = "input-" + i;
       label.textContent = position;
 
+      // Passing the array itself (not a copy) lets us add a player to it later
       const combo = createCombo(players, "input-" + i);
       field.append(label, combo.el);
       fieldsEl.appendChild(field);
       combos[position] = combo;
     });
+
+    // Submit button lives in the same row as the dropdowns
+    const submitBtn = document.createElement("button");
+    submitBtn.id = "submitBtn";
+    submitBtn.textContent = "Submit";
+    fieldsEl.appendChild(submitBtn);
 
     function fileFor(name) {
       const slug = name.toLowerCase().trim()
@@ -364,7 +482,15 @@
       if (!res.ok) throw new Error(`Could not find ${url} (HTTP ${res.status})`);
       const wb = XLSX.read(await res.arrayBuffer(), { type: "array" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+      const all = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+
+      // Only rows with a value in MP can be picked (skips Did Not Play / Inactive
+      // rows, and repeated header rows where the MP cell just says "MP")
+      const rows = all.filter(r => {
+        const mp = String(r["MP"] ?? "").trim();
+        return mp !== "" && mp !== "MP";
+      });
+
       cache[name] = rows;
       return rows;
     }
@@ -386,7 +512,7 @@
     async function buildCard(position, name) {
       try {
         const rows = await loadRows(name);
-        if (!rows.length) throw new Error("That file has no data rows.");
+        if (!rows.length) throw new Error("That file has no rows with minutes played (MP).");
         const row = rows[Math.floor(Math.random() * rows.length)];
 
         // Pull GmSc out as a number (null if missing or not a number)
@@ -413,10 +539,12 @@
       }
     }
 
-    document.getElementById("submitBtn").addEventListener("click", async () => {
+    submitBtn.addEventListener("click", async () => {
       const chosen = Object.keys(POSITIONS)
         .map(pos => [pos, combos[pos].getValue()])
         .filter(([, name]) => name !== "");
+
+      summaryEl.innerHTML = "";
 
       if (!chosen.length) {
         result.innerHTML = `<div class="message">Select at least one player first.</div>`;
@@ -429,16 +557,30 @@
       const scores = built.map(b => b.gmsc).filter(g => g !== null);
       const total = scores.reduce((sum, g) => sum + g, 0);
 
-      const summary = scores.length ? `
-        <div class="summary">
-          <div>
-            <div class="label">Total Game Score</div>
-            <div class="sub">Sum of GmSc across ${scores.length} player${scores.length === 1 ? "" : "s"}</div>
-          </div>
-          <div class="total">${total.toFixed(1)}</div>
-        </div>` : "";
+      result.innerHTML = built.map(b => b.html).join("");
 
-      result.innerHTML = built.map(b => b.html).join("") + summary;
+      if (scores.length) {
+        summaryEl.innerHTML = `
+          <div class="summary">
+            <div>
+              <div class="label">Total Game Score</div>
+              <div class="sub">Sum of GmSc across ${scores.length} player${scores.length === 1 ? "" : "s"}</div>
+            </div>
+            <div class="total">${total.toFixed(1)}</div>
+          </div>`;
+      }
+    });
+
+    // Release the Beast: show Timmy for 3 seconds and unlock Tim Duncan
+    new Image().src = "timmy.png";   // preload so it appears instantly
+    let timmyTimer;
+    document.getElementById("beastBtn").addEventListener("click", () => {
+      const list = POSITIONS[SECRET_POSITION];
+      if (!list.includes(SECRET_PLAYER)) list.push(SECRET_PLAYER);
+
+      timmyEl.hidden = false;
+      clearTimeout(timmyTimer);
+      timmyTimer = setTimeout(() => { timmyEl.hidden = true; }, 3000);
     });
   </script>
 </body>
