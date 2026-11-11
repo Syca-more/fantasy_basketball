@@ -2,47 +2,75 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Random Game Picker</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body { font-family: sans-serif; margin: 2rem; }
     table { border-collapse: collapse; margin-top: 1rem; }
     th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: center; }
     th { background: #f0f0f0; }
     .wrap { overflow-x: auto; }
+    .error { color: #b00020; }
   </style>
 </head>
 <body>
-  <h1>Pick a name</h1>
+  <h1>Pick a player</h1>
   <select id="nameSelect"></select>
   <button id="submitBtn">Submit</button>
   <div class="wrap"><div id="result"></div></div>
 
   <script>
-    const NAMES = ["Ty Lawson", "Player 2", "Player 3"];   // your pre-defined list
+    // ADD NEW PLAYERS HERE. Each needs a matching file, e.g. "Ty Lawson" -> ty_lawson.xls
+    const PLAYERS = ["Ty Lawson", "Another Player"];
+
+    const FILE_EXT = ".xls";
+    const FILE_FOLDER = "";   // use "data/" if you put the files in a data folder
+
     const COLUMNS = ["Date", "Opp", "Result", "MP", "FG", "FGA", "FG%", "3P", "3PA",
       "3P%", "eFG%", "FT", "FTA", "FT%", "ORB", "DRB", "TRB", "AST", "STL",
       "BLK", "TOV", "PF", "PTS", "GmSc", "+/-"];
 
     const select = document.getElementById("nameSelect");
-    NAMES.forEach(n => select.add(new Option(n, n)));
+    const result = document.getElementById("result");
+    const cache = {};   // so each file is only downloaded once
 
-    let rows = [];
-    Papa.parse("data.csv", {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: res => { rows = res.data; }
-    });
+    PLAYERS.forEach(n => select.add(new Option(n, n)));
 
-    document.getElementById("submitBtn").addEventListener("click", () => {
-      if (!rows.length) return;
-      const row = rows[Math.floor(Math.random() * rows.length)];
+    function fileFor(name) {
+      const slug = name.toLowerCase().trim()
+        .replace(/[^a-z0-9\s]/g, "")   // drop periods, apostrophes, etc.
+        .replace(/\s+/g, "_");
+      return FILE_FOLDER + slug + FILE_EXT;
+    }
 
-      const head = COLUMNS.map(c => `<th>${c}</th>`).join("");
-      const cells = COLUMNS.map(c => `<td>${row[c] ?? ""}</td>`).join("");
-      document.getElementById("result").innerHTML =
-        `<h2>${select.value}</h2><table><tr>${head}</tr><tr>${cells}</tr></table>`;
+    async function loadRows(name) {
+      if (cache[name]) return cache[name];
+      const url = fileFor(name);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Could not find ${url} (HTTP ${res.status})`);
+      const wb = XLSX.read(await res.arrayBuffer(), { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+      cache[name] = rows;
+      return rows;
+    }
+
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      const name = select.value;
+      result.className = "";
+      result.textContent = "Loading...";
+      try {
+        const rows = await loadRows(name);
+        if (!rows.length) throw new Error("That file has no data rows.");
+        const row = rows[Math.floor(Math.random() * rows.length)];
+        const head = COLUMNS.map(c => `<th>${c}</th>`).join("");
+        const cells = COLUMNS.map(c => `<td>${row[c] ?? ""}</td>`).join("");
+        result.innerHTML = `<h2>${name}</h2><table><tr>${head}</tr><tr>${cells}</tr></table>`;
+      } catch (err) {
+        result.className = "error";
+        result.textContent = err.message;
+      }
     });
   </script>
 </body>
