@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Historic Fantasy Game</title>
+  <title>Random Game Picker</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     :root {
@@ -79,6 +79,43 @@
       outline-offset: 2px;
     }
 
+    /* Custom searchable dropdown */
+    .combo { position: relative; }
+    .combo input { padding-right: 2.2rem; cursor: pointer; }
+    .combo .arrow {
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .options {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 20;
+      margin: 0;
+      padding: 4px;
+      list-style: none;
+      max-height: 220px;
+      overflow-y: auto;
+      background: var(--bg);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .options[hidden] { display: none; }
+    .options li {
+      padding: 0.55rem 0.75rem;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+    .options li.active { background: rgba(249, 115, 22, 0.25); }
+    .options li.selected { color: var(--accent); font-weight: 700; }
+    .options li.empty { color: var(--muted); cursor: default; font-style: italic; }
+
     .actions { margin-top: 1.25rem; text-align: center; }
 
     button {
@@ -136,7 +173,7 @@
 <body>
   <div class="container">
     <header>
-      <h1>🏀 Historic <span>Fantasy</span> Game</h1>
+      <h1>🏀 Random <span>Game</span> Picker</h1>
       <p>Choose players by position and pull a random game from each log.</p>
     </header>
 
@@ -152,7 +189,7 @@
     // WHICH PLAYERS APPEAR IN WHICH DROPDOWN. Edit these lists to add players.
     // Each player needs a matching file, e.g. "Ty Lawson" -> ty_lawson.xls
     const POSITIONS = {
-      "Point Guard":    ["Ty Lawson"],
+      "Point Guard":    ["Ty Lawson","Fat Lever","Jamal Murray"],
       "Shooting Guard": [],
       "Small Forward":  [],
       "Power Forward":  [],
@@ -169,12 +206,108 @@
 
     const fieldsEl = document.getElementById("fields");
     const result = document.getElementById("result");
-    const cache = {};   // so each file is only downloaded once
-    const inputs = {};  // position -> its input element
+    const cache = {};    // so each file is only downloaded once
+    const combos = {};   // position -> its dropdown
 
-    // Build one searchable dropdown per position
+    // Searchable dropdown: click shows ALL options, typing filters them
+    function createCombo(players, id) {
+      const wrap = document.createElement("div");
+      wrap.className = "combo";
+
+      const input = document.createElement("input");
+      input.id = id;
+      input.type = "text";
+      input.placeholder = "Select Player";
+      input.autocomplete = "off";
+
+      const arrow = document.createElement("span");
+      arrow.className = "arrow";
+      arrow.textContent = "▾";
+
+      const list = document.createElement("ul");
+      list.className = "options";
+      list.hidden = true;
+
+      wrap.append(input, arrow, list);
+
+      let selected = "";   // last valid choice
+      let shown = [];      // options currently visible
+      let active = -1;     // keyboard-highlighted index
+
+      function render(filter) {
+        const q = filter.trim().toLowerCase();
+        shown = q ? players.filter(p => p.toLowerCase().includes(q)) : players.slice();
+        active = -1;
+        list.innerHTML = "";
+        if (!shown.length) {
+          const li = document.createElement("li");
+          li.className = "empty";
+          li.textContent = players.length ? "No matches" : "No players added yet";
+          list.appendChild(li);
+          return;
+        }
+        shown.forEach(p => {
+          const li = document.createElement("li");
+          li.textContent = p;
+          if (p === selected) li.classList.add("selected");
+          // mousedown (not click) so it fires before the input loses focus
+          li.addEventListener("mousedown", e => { e.preventDefault(); choose(p); });
+          list.appendChild(li);
+        });
+      }
+
+      function setActive(i) {
+        const items = list.querySelectorAll("li:not(.empty)");
+        items.forEach(li => li.classList.remove("active"));
+        active = i;
+        if (items[i]) {
+          items[i].classList.add("active");
+          items[i].scrollIntoView({ block: "nearest" });
+        }
+      }
+
+      function openAll() { render(""); list.hidden = false; }
+      function close() { list.hidden = true; }
+      function choose(p) { selected = p; input.value = p; close(); input.blur(); }
+
+      input.addEventListener("focus", () => { input.select(); openAll(); });
+      input.addEventListener("click", () => { if (list.hidden) openAll(); });
+      input.addEventListener("input", () => { render(input.value); list.hidden = false; });
+
+      input.addEventListener("blur", () => {
+        const typed = input.value.trim();
+        const exact = players.find(p => p.toLowerCase() === typed.toLowerCase());
+        if (exact) selected = exact;       // typed a full valid name
+        else if (typed === "") selected = "";   // cleared the box
+        input.value = selected;            // otherwise revert to last valid choice
+        close();
+      });
+
+      input.addEventListener("keydown", e => {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          if (list.hidden) openAll();
+          if (shown.length) setActive(Math.min(active + 1, shown.length - 1));
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (shown.length) setActive(Math.max(active - 1, 0));
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          if (!list.hidden) {
+            if (active >= 0) choose(shown[active]);
+            else if (shown.length === 1) choose(shown[0]);
+          }
+        } else if (e.key === "Escape") {
+          input.value = selected;
+          close();
+        }
+      });
+
+      return { el: wrap, getValue: () => selected };
+    }
+
+    // Build one dropdown per position
     Object.entries(POSITIONS).forEach(([position, players], i) => {
-      const listId = "list-" + i;
       const field = document.createElement("div");
       field.className = "field";
 
@@ -182,19 +315,10 @@
       label.htmlFor = "input-" + i;
       label.textContent = position;
 
-      const input = document.createElement("input");
-      input.id = "input-" + i;
-      input.setAttribute("list", listId);
-      input.placeholder = "Select Player";
-      input.autocomplete = "off";
-
-      const datalist = document.createElement("datalist");
-      datalist.id = listId;
-      players.forEach(p => datalist.appendChild(new Option(p)));
-
-      field.append(label, input, datalist);
+      const combo = createCombo(players, "input-" + i);
+      field.append(label, combo.el);
       fieldsEl.appendChild(field);
-      inputs[position] = input;
+      combos[position] = combo;
     });
 
     function fileFor(name) {
@@ -230,11 +354,7 @@
               <div class="message error">${text}</div></div>`;
     }
 
-    async function buildCard(position, typed) {
-      // Only accept names that are in this position's list (case-insensitive)
-      const name = POSITIONS[position].find(p => p.toLowerCase() === typed.toLowerCase());
-      if (!name) return errorCard(position, `"${typed}" isn't available at this position. Pick a name from the list.`);
-
+    async function buildCard(position, name) {
       try {
         const rows = await loadRows(name);
         if (!rows.length) throw new Error("That file has no data rows.");
@@ -260,8 +380,8 @@
 
     document.getElementById("submitBtn").addEventListener("click", async () => {
       const chosen = Object.keys(POSITIONS)
-        .map(pos => [pos, inputs[pos].value.trim()])
-        .filter(([, typed]) => typed !== "");
+        .map(pos => [pos, combos[pos].getValue()])
+        .filter(([, name]) => name !== "");
 
       if (!chosen.length) {
         result.innerHTML = `<div class="message">Select at least one player first.</div>`;
@@ -269,7 +389,7 @@
       }
 
       result.innerHTML = `<div class="message">Loading...</div>`;
-      const cards = await Promise.all(chosen.map(([pos, typed]) => buildCard(pos, typed)));
+      const cards = await Promise.all(chosen.map(([pos, name]) => buildCard(pos, name)));
       result.innerHTML = cards.join("");
     });
   </script>
