@@ -134,6 +134,18 @@ button {
 button:hover { background: var(--accent-hover); }
 button:active { transform: scale(0.97); }
 
+/* Reset button: light grey, bottom left */
+button.reset {
+  background: #d1d5db;
+  color: #1f2937;
+  border-color: #d1d5db;
+  white-space: nowrap;
+}
+button.reset:hover {
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+}
+
 /* Results fill whatever space is left */
 #result {
   flex: 1;
