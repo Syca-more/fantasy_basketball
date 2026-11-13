@@ -266,6 +266,9 @@ async function handleSubmit() {
   }
 }
 
+// Reset button (bottom left): reloads the page, clearing selections and results
+document.getElementById("resetBtn").addEventListener("click", () => location.reload());
+
 // ---------------------------------------------------------------
 // Release the Beast: show Timmy for 3 seconds and unlock Tim Duncan
 // ---------------------------------------------------------------
