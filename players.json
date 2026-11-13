@@ -1,0 +1,13 @@
+{
+  "positions": {
+    "Point Guard":    ["Ty Lawson", "Fat Lever", "Jamal Murray"],
+    "Shooting Guard": ["David Thompson", "Ralph Simpson", "Allen Iverson"],
+    "Small Forward":  ["Alex English", "Carmelo Anthony", "Kiki Vandeweghe"],
+    "Power Forward":  ["Antonio McDyess", "LaPhonso Ellis", "Spencer Haywood"],
+    "Center":         ["Nikola Jokic", "Dan Issel", "Dikembe Mutombo"]
+  },
+  "secret": {
+    "player": "Tim Duncan",
+    "position": "Power Forward"
+  }
+}
