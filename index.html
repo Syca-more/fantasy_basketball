@@ -164,6 +164,7 @@
     .card h2 { margin: 0 0 0.3rem; font-size: 0.95rem; }
     .card h2 .pos { color: var(--accent); }
     .card h2 small { color: var(--muted); font-weight: 400; font-size: 0.8rem; margin-left: 0.5rem; }
+    .card h2 .team { color: var(--text); font-weight: 700; }
 
     .gmsc {
       color: var(--win);
@@ -228,6 +229,21 @@
     }
     .summary .sub { color: var(--muted); font-size: 0.75rem; }
     .summary .total { color: var(--win); font-size: 1.7rem; font-weight: 800; line-height: 1; }
+
+    /* Team boost badge */
+    .boost {
+      display: inline-block;
+      background: rgba(249, 115, 22, 0.15);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
 
     .beast {
       background: linear-gradient(135deg, #ef4444, #b91c1c);
@@ -341,6 +357,12 @@
       "3P%", "eFG%", "FT", "FTA", "FT%", "ORB", "DRB", "TRB", "AST", "STL",
       "BLK", "TOV", "PF", "PTS", "GmSc", "+/-"];
     const KEY_COLUMNS = ["TRB", "AST", "PTS"];   // highlighted in orange
+
+    // TEAM BOOST: if every displayed player's game is for the same team
+    // (and at least MIN_PLAYERS_FOR_BOOST players are shown), the total gets a bonus.
+    const TEAM_BOOST = 0.10;            // 10%
+    const MIN_PLAYERS_FOR_BOOST = 2;    // set to 1 to also boost a single player
+    const TEAM_COLUMN_NAMES = ["team", "tm"];   // header name(s) of the team column (any capitalization)
 
     const fieldsEl = document.getElementById("fields");
     const result = document.getElementById("result");
@@ -495,6 +517,16 @@
       return rows;
     }
 
+    // Finds the team abbreviation in a row, whatever the team column's capitalization
+    function getTeam(row) {
+      for (const key of Object.keys(row)) {
+        if (TEAM_COLUMN_NAMES.includes(key.trim().toLowerCase())) {
+          return String(row[key] ?? "").trim().toUpperCase();
+        }
+      }
+      return "";
+    }
+
     function cellClass(col, value) {
       if (KEY_COLUMNS.includes(col)) return "key";
       if (col === "Result") {
@@ -518,6 +550,7 @@
         // Pull GmSc out as a number (null if missing or not a number)
         const parsed = parseFloat(String(row["GmSc"] ?? "").replace(/[^0-9.\-]/g, ""));
         const gmsc = isNaN(parsed) ? null : parsed;
+        const team = getTeam(row);
 
         const head = COLUMNS
           .map(c => `<th class="${KEY_COLUMNS.includes(c) ? "key" : ""}">${c}</th>`)
@@ -529,13 +562,13 @@
         const html = `
           <div class="card">
             <h2><span class="pos">${position}:</span> ${name}
-              <small>${row["Date"] ?? ""} ${row["Opp"] ? "vs " + row["Opp"] : ""}</small>
+              <small>${team ? `<span class="team">${team}</span> · ` : ""}${row["Date"] ?? ""} ${row["Opp"] ? "vs " + row["Opp"] : ""}</small>
               ${gmsc !== null ? `<span class="gmsc">GmSc ${row["GmSc"]}</span>` : ""}</h2>
             <div class="wrap"><table><tr>${head}</tr><tr>${cells}</tr></table></div>
           </div>`;
-        return { html, gmsc };
+        return { html, gmsc, team, ok: true };
       } catch (err) {
-        return { html: errorCard(position, err.message), gmsc: null };
+        return { html: errorCard(position, err.message), gmsc: null, team: "", ok: false };
       }
     }
 
@@ -555,17 +588,30 @@
       const built = await Promise.all(chosen.map(([pos, name]) => buildCard(pos, name)));
 
       const scores = built.map(b => b.gmsc).filter(g => g !== null);
-      const total = scores.reduce((sum, g) => sum + g, 0);
+      const baseTotal = scores.reduce((sum, g) => sum + g, 0);
+
+      // Team boost: every successfully loaded game must have the same, non-blank team
+      const loaded = built.filter(b => b.ok);
+      const teams = loaded.map(b => b.team);
+      const sameTeam = loaded.length >= MIN_PLAYERS_FOR_BOOST &&
+        teams.every(t => t !== "") &&
+        teams.every(t => t === teams[0]);
+      const boostTeam = sameTeam ? teams[0] : "";
+      const total = sameTeam ? baseTotal * (1 + TEAM_BOOST) : baseTotal;
 
       result.innerHTML = built.map(b => b.html).join("");
 
       if (scores.length) {
+        const pct = Math.round(TEAM_BOOST * 100);
         summaryEl.innerHTML = `
           <div class="summary">
             <div>
               <div class="label">Total Game Score</div>
-              <div class="sub">Sum of GmSc across ${scores.length} player${scores.length === 1 ? "" : "s"}</div>
+              <div class="sub">${sameTeam
+                ? `${baseTotal.toFixed(1)} base + ${pct}% team boost`
+                : `Sum of GmSc across ${scores.length} player${scores.length === 1 ? "" : "s"}`}</div>
             </div>
+            ${sameTeam ? `<div class="boost">+${pct}% Team Boost (${boostTeam})</div>` : ""}
             <div class="total">${total.toFixed(1)}</div>
           </div>`;
       }
