@@ -1,10 +1,10 @@
 {
   "positions": {
-    "Point Guard":    ["Ty Lawson", "Fat Lever", "Jamal Murray","Oscar Robertson","Steve Nash"],
+    "Point Guard":    ["Ty Lawson", "Fat Lever", "Jamal Murray","Oscar Robertson","Steve Nash", "Tyrese Haliburton"],
     "Shooting Guard": ["David Thompson", "Ralph Simpson", "Allen Iverson","Victor Oladipo","Reggie Miller","Dwyane Wade"],
-    "Small Forward":  ["Alex English", "Carmelo Anthony", "Kiki Vandeweghe","Julius Erving","Kawhi Leonard"],
-    "Power Forward":  ["Antonio McDyess", "LaPhonso Ellis", "Spencer Haywood","Anthony Davis", "Kevin Garnett"],
-    "Center":         ["Nikola Jokic", "Dan Issel", "Dikembe Mutombo","Yao Ming", "Shaquille O'Neal", "Moses Malone"]
+    "Small Forward":  ["Alex English", "Carmelo Anthony", "Kiki Vandeweghe","Julius Erving","Kawhi Leonard","Dominique Wilkins"],
+    "Power Forward":  ["Antonio McDyess", "LaPhonso Ellis", "Spencer Haywood","Anthony Davis", "Kevin Garnett", "Jermaine O'Neal"],
+    "Center":         ["Nikola Jokic", "Dan Issel", "Dikembe Mutombo","Yao Ming", "Shaquille O'Neal", "Moses Malone","Andre Drummond"]
   },
   "secret": {
     "player": "Tim Duncan",
