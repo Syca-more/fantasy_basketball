@@ -311,3 +311,14 @@ td.key { font-size: 1.1em; }
   table { font-size: 0.8rem; }
   .bar { flex-direction: column; align-items: stretch; }
 }
+/* Reset button: light grey (overrides the orange default) */
+#resetBtn {
+  background: #d1d5db;
+  color: #1f2937;
+  border-color: #d1d5db;
+  white-space: nowrap;
+}
+#resetBtn:hover {
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+}
